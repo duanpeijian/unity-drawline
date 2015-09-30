@@ -51,16 +51,36 @@ public class DrawGrid2: MonoBehaviour
 	private Parallel mParallel = new Parallel();
 
 	private List<Wall2D> found = new List<Wall2D>();
+	private VectorLine segmentOutline;
+	private WallFill segmentFill;
 
 	void Update(){
-//		var savedWall = Home.Get().Walls;
-//		found.Clear();
-//		for(int i=0; i < savedWall.Count; i++){
-//			Wall2D wall = savedWall[i];
-//			if(!found.Contains(wall)){
-//
-//			}
-//		}
+		segmentFill.Resize(0);
+		segmentOutline.Resize(0);
+		var savedWall = Home.Get().Walls;
+		found.Clear();
+		for(int i=0; i < savedWall.Count; i++){
+			Wall2D wall = savedWall[i];
+			
+			if(found.Contains(wall)){
+				continue;
+			}
+			
+			List<Wall2D> toDraw = new List<Wall2D>();
+			toDraw.Add(wall);
+			while(wall.WallAtEnd != null){
+				wall = wall.WallAtEnd;
+				found.Add(wall);
+				toDraw.Add(wall);
+			}
+			
+			SetupSegment(segmentFill, segmentOutline, toDraw);
+		}
+
+		segmentFill.Draw();
+
+		segmentOutline.SetColor(Color.black);
+		segmentOutline.Draw3D();
 
 		if(mState != State2D.Draw){
 			return;
@@ -73,17 +93,10 @@ public class DrawGrid2: MonoBehaviour
 		}
 
 		if(Input.GetMouseButtonDown(0)){
-			lastMousePos = Input.mousePosition;
-			drawBreak = true;
-		}
-		
-		if(Input.GetMouseButtonDown(1)){
-			lastMousePos = Input.mousePosition;
-			
 			if(drawBreak){
 				drawBreak = false;
 				
-				wall[0] = wall[1] = PixelToReal(camera2d, lastMousePos);
+				wall[0] = wall[1] = PixelToReal(camera2d, current);
 				
 				walls.Clear();
 				
@@ -100,7 +113,7 @@ public class DrawGrid2: MonoBehaviour
 					wall[0] = wall[1];
 				}
 				else{
-					wall[1] = PixelToReal(camera2d, lastMousePos);
+					wall[1] = PixelToReal(camera2d, current);
 					Wall2D newWall = new Wall2D(wall[0], wall[1]);
 					if(walls.Count >= 1){
 						newWall.WallAtStart = walls[walls.Count-1];
@@ -111,6 +124,15 @@ public class DrawGrid2: MonoBehaviour
 					wall[0] = wall[1];
 				}
 			}
+		}
+		
+		if(Input.GetMouseButtonDown(1)){
+			drawBreak = true;
+			
+//			Vector3[] room = DiscreteToContinue(walls, drawStartIndex);
+//			if(room != null){
+//				DrawWall(room);
+//			}
 		}
 		
 		if(Input.GetMouseButton(0) || Input.GetMouseButton(1)){
@@ -131,19 +153,10 @@ public class DrawGrid2: MonoBehaviour
 		//stop draw line;
 		if(Input.GetMouseButtonDown(2)){
 			drawBreak = true;
-			
-			int length = walls.Count;
-			Vector3[] room = new Vector3[length - drawStartIndex + 1];
-			int i=0;
-			for(int j=drawStartIndex; j < length; j++){
-				room[i++] = walls[j].StartPos;
-			}
-			room[i] = walls[length-1].EndPos;
-			DrawWall(room);
 		}
 		
 		if(!drawBreak){
-			wall[1] = PixelToReal(camera2d, Input.mousePosition);
+			wall[1] = PixelToReal(camera2d, current);
 		}
 		
 		if(!isContinue){
@@ -200,6 +213,79 @@ public class DrawGrid2: MonoBehaviour
 			//drawLine.SetWidths(widths);
 			drawLine.Draw3D();
 		}
+	}
+
+	void SetupOutLine(VectorLine outline, List<Vector3> list){
+		int startIndex = outline.points3.Count;
+		outline.Resize(startIndex + (list.Count-1)*2);
+		for(int i = 0, j=startIndex; i < list.Count-1; i++, j=j+2){
+			outline.points3[j] = list[i];
+			outline.points3[j+1] = list[i+1];
+		}
+	}
+	
+	void SetupSegment(WallFill wallFill, VectorLine outline, List<Wall2D> wallList){
+		bool isClose = false;
+		if(wallList[0].StartPos == wallList[wallList.Count-1].EndPos){
+			isClose = true;
+		}
+
+		Vector3[] room = DiscreteToContinue(wallList);
+
+		if(isClose){
+
+			List<Vector3> outter;
+			RoomQuad.GetPoint(room, isClose, true, out outter);
+			List<Vector3> inner;
+			RoomQuad.GetPoint(room, isClose, false, out inner);
+
+			wallFill.Add(outter, inner);
+
+			if(inner.Count > 0){
+				SetupOutLine(outline, inner);
+			}
+			
+			if(outter.Count > 0){
+				SetupOutLine(outline, outter);
+			}
+
+		}
+		else{
+			Parallel parallel = new Parallel();
+			List<Vector3> outter = parallel.Execute(room, false);
+			List<Vector3> inner = parallel.Execute(room, true);
+
+			wallFill.Add(outter, inner);
+
+			if(inner.Count > 0){
+				SetupOutLine(outline, inner);
+			}
+			
+			if(outter.Count > 0){
+				SetupOutLine(outline, outter);
+			}
+		}
+
+	}
+
+
+
+	Vector3[] DiscreteToContinue(List<Wall2D> wallList, int startIndex  = 0){
+		int length = wallList.Count;
+
+		Vector3[] room = null;
+		
+		if(length > 0){
+			room = new Vector3[length - startIndex + 1];
+			int i=0;
+			for(int j=startIndex; j < length; j++){
+				room[i++] = wallList[j].StartPos;
+			}
+
+			room[i] = wallList[length-1].EndPos;
+		}
+
+		return room;
 	}
 
 //	private abstract class ControllerState {
@@ -353,7 +439,8 @@ public class DrawGrid2: MonoBehaviour
 			RoomQuad.GetPoint(room, isClose, false, out inner);
 
 			WallFill wallFill = new WallFill(VectorLine.canvas3D, "wallFill");
-			wallFill.Draw(outter, inner);
+			wallFill.Add(outter, inner);
+			wallFill.Draw();
 			
 			if(inner.Count > 0){
 				VectorLine roomInner = new VectorLine("RoomInner", inner, null, 1.0f, LineType.Continuous, Joins.Weld);
@@ -374,7 +461,8 @@ public class DrawGrid2: MonoBehaviour
 			List<Vector3> inner = parallel.Execute(room, true);
 
 			WallFill wallFill = new WallFill(VectorLine.canvas3D, "wallFill");
-			wallFill.Draw(outter, inner);
+			wallFill.Add(outter, inner);
+			wallFill.Draw();
 			
 //			if(inner.Count > 0){
 //				VectorLine roomInner = new VectorLine("RoomInner", inner, null, 1.0f, LineType.Continuous, Joins.None);
@@ -468,6 +556,8 @@ public class DrawGrid2: MonoBehaviour
 		drawLine = new VectorLine("Draw", new Vector3[0], null, 1.0f, isContinue? LineType.Continuous : LineType.Discrete, isContinue ? Joins.None : Joins.None);
 		//drawLine.rectTransform.gameObject.AddComponent<Outline>();
 		rulerLine = new VectorLine("Ruler", new Vector3[0], null, 1.0f, LineType.Discrete);
+		segmentOutline = new VectorLine("SegmentOutline", new Vector3[0], null, 1.0f, LineType.Discrete);
+		segmentFill = new WallFill(VectorLine.canvas3D, "SegmentFill");
 
 		Vector3[] room = RoomQuad.GetVertex();
 		DrawWall(room);
