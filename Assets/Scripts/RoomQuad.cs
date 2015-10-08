@@ -8,27 +8,13 @@ namespace Construction {
 
 	public class RoomQuad {
 
-		private static double mWallThick = 0.1f;
-
-		public static double WallThick {
-			get {
-				return mWallThick;
-			}
-		}
-
-		private static long scalling;
-
-		static RoomQuad() {
-			scalling = (long)Mathf.Pow(10, 6);
-		}
-
 		public static Vector3[] GetVertex(){
 			Vector3[] quad = new Vector3[] {
-				new Vector3(-0.5f, -0.5f, 0f),
-				new Vector3(-0.5f, 0.5f, 0f),
 				new Vector3(0.5f, 0.5f, 0f),
+				new Vector3(-0.5f, 0.5f, 0f),
+				new Vector3(-0.5f, -0.5f, 0f),
 				new Vector3(0.5f, -0.5f, 0f),
-				new Vector3(-0.5f, -0.5f, 0f)
+				new Vector3(0.5f, 0.5f, 0f)
 			};
 
 			for(int i=0; i < quad.Length; i++){
@@ -41,11 +27,11 @@ namespace Construction {
 			return quad;
 		}
 		
-		public static bool GetPoint(Vector3[] quad, bool isClose, bool outter, out List<Vector3> list){
+		public static bool GetPoint(Vector3[] quad, bool outter, out List<Vector3> list, bool isClose=true){
 			List<IntPoint> quadLines = new List<IntPoint>();
 			for(int i=0; i < quad.Length; i++){
 				Vector3 from = quad[i];
-				IntPoint to = new IntPoint(from.x * scalling, from.y * scalling);
+				IntPoint to = new IntPoint(from.x * DrawHelper.ClipScalling, from.y * DrawHelper.ClipScalling);
 				quadLines.Add(to);
 
 				//				IntPoint to = quad[i+1];
@@ -63,7 +49,7 @@ namespace Construction {
 			ClipperOffset co = new ClipperOffset();
 			co.AddPath(quadLines, JoinType.jtMiter, endType);
 			Paths solution = new Paths();
-			double delta = -mWallThick/2 * scalling;
+			double delta = -DrawHelper.WallThick/2 * DrawHelper.ClipScalling;
 			if(outter){
 				delta = -delta;
 			}
@@ -75,7 +61,7 @@ namespace Construction {
 
 			if(solution.Count > 0){
 				foreach(IntPoint p in solution[0]){
-					Vector3 re = new Vector3(p.X * 1.0f/scalling, p.Y * 1.0f/scalling, 0f);
+					Vector3 re = new Vector3(p.X * 1.0f/DrawHelper.ClipScalling, p.Y * 1.0f/DrawHelper.ClipScalling, 0f);
 
 					if(!isClose){
 						//Debug.Log("result: " + re);

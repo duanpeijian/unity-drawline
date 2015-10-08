@@ -9,6 +9,10 @@ public class Home : PlainSingleton<Home> {
 		this.walls.Add(wall);
 	}
 
+	public void AddWallList(List<Wall2D> list){
+		walls.AddRange(list);
+	}
+
 	public IList<Wall2D> Walls {
 		get {
 			return walls;

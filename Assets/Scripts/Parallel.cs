@@ -40,7 +40,7 @@ public class Parallel {
 		return offset;
 	}
 
-	public List<Vector3> Execute(Vector3[] room, bool right = true){
+	public List<Vector3> Execute(Vector3[] room, bool right = true, bool isClose = false){
 		if(room.Length < 2){
 			Debug.LogError("vertex count less than 2");
 			return null;
@@ -49,20 +49,22 @@ public class Parallel {
 
 		List<Line> lines = new List<Line>();
 
-		Vector2 first = new Vector2();
-		Vector2 last = new Vector2();
+		Vector2 first = Vector2.zero;
+		Vector2 last = Vector2.zero;
 
 		List<Vector3> result = new List<Vector3>();
 
 		for(int i=0; i < room.Length-1; i++){
 			Vector2 offset = GetOffset(room[i], room[i+1], right, dist);
 
-			if(i == 0){
-				first = new Vector2(room[0].x + offset.x, room[0].y + offset.y);
-			}
-
-			if(i == room.Length-2){
-				last = new Vector2(room[i+1].x + offset.x, room[i+1].y + offset.y);
+			if(!isClose){
+				if(i == 0){
+					first = new Vector2(room[0].x + offset.x, room[0].y + offset.y);
+				}
+				
+				if(i == room.Length-2){
+					last = new Vector2(room[i+1].x + offset.x, room[i+1].y + offset.y);
+				}
 			}
 
 			Vector2 middle = (room[i] + room[i+1])/2;
@@ -82,6 +84,12 @@ public class Parallel {
 			lines.Add(line);
 		}
 
+		if(isClose){
+			Vector2 p;
+			if(GetCrossPoint(lines[0], lines[lines.Count-1], out p)){
+				first = last = p;
+			}
+		}
 
 		result.Add(first);
 
@@ -89,32 +97,44 @@ public class Parallel {
 			Line line1 = lines[i];
 			Line line2 = lines[i+1];
 
-			Vector2 p = new Vector2();
-
-			if(line1.isVetical && line2.isVetical){
-				Debug.LogError("two line vetical");
-				continue;
+			Vector2 p;
+			if(GetCrossPoint(line1, line2, out p)){
+				result.Add(p);
 			}
-
-			if(line1.isVetical){
-				p.x = line1.b;
-				p.y = line2.k * p.x + line2.b;
-			}
-			else if(line2.isVetical){
-				p.x = line2.b;
-				p.y = line1.k * p.x + line1.b;
-			}
-			else{
-				p.x = (line1.b - line2.b)/(line2.k - line1.k);
-				p.y = line1.k * p.x + line1.b;
-			}
-
-			result.Add(p);
 		}
 
 		result.Add(last);
 
 		return result;
+	}
+
+	public bool GetCrossPoint(Line line1, Line line2, out Vector2 p){
+
+		p = Vector2.zero;
+
+		if(line1.isVetical && line2.isVetical){
+			Debug.LogError("two line vetical");
+			return false;
+		}
+		
+		if(line1.isVetical){
+			p.x = line1.b;
+			p.y = line2.k * p.x + line2.b;
+		}
+		else if(line2.isVetical){
+			p.x = line2.b;
+			p.y = line1.k * p.x + line1.b;
+		}
+		else if(line2.k == line1.k){
+			Debug.LogError("two parallel line");
+			return false;
+		}
+		else{
+			p.x = (line1.b - line2.b)/(line2.k - line1.k);
+			p.y = line1.k * p.x + line1.b;
+		}
+
+		return true;
 	}
 
 	//float[0] is k and float[1] is b;

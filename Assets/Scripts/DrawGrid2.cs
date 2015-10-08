@@ -14,25 +14,9 @@ public enum State2D {
 public class DrawGrid2: MonoBehaviour
 {
 	private int unitPixels = 100;
-	private float scale;
 
 	private VectorLine gridLine;
 	private Camera camera2d;
-
-	public Rect GetRealRect(Camera camera2d){
-		Vector2 size = new Vector2(scale*camera2d.pixelWidth, 2*camera2d.orthographicSize);
-		Vector2 offset = new Vector2(camera2d.transform.position.x, camera2d.transform.position.y);
-		Rect realRect = new Rect(new Vector2(-size.x/2 + offset.x, -size.y/2 + offset.y), size);
-		return realRect;
-	}
-
-	public Vector2 PixelToReal(Camera camera2d, Vector2 mousePos){
-		Rect rect = camera2d.pixelRect;
-		Rect realRect = GetRealRect(camera2d);
-		float x = (mousePos.x - rect.xMin) * scale + realRect.xMin;
-		float y = (mousePos.y - rect.yMin) * scale + realRect.yMin;
-		return new Vector2(x, y);
-	}
 
 	private State2D mState;
 	private Vector2 lastMousePos;
@@ -55,26 +39,32 @@ public class DrawGrid2: MonoBehaviour
 	private WallFill segmentFill;
 
 	void Update(){
-		segmentFill.Resize(0);
+		segmentFill.Clear();
 		segmentOutline.Resize(0);
 		var savedWall = Home.Get().Walls;
 		found.Clear();
 		for(int i=0; i < savedWall.Count; i++){
-			Wall2D wall = savedWall[i];
+			Wall2D start = savedWall[i];
 			
-			if(found.Contains(wall)){
+			if(found.Contains(start)){
 				continue;
 			}
 			
 			List<Wall2D> toDraw = new List<Wall2D>();
+			Wall2D wall = start;
 			toDraw.Add(wall);
-			while(wall.WallAtEnd != null){
+			while(wall.WallAtEnd != null && wall.WallAtEnd != start){
 				wall = wall.WallAtEnd;
 				found.Add(wall);
 				toDraw.Add(wall);
 			}
-			
-			SetupSegment(segmentFill, segmentOutline, toDraw);
+
+//			if(wall.WallAtEnd != null && wall.WallAtEnd == start){
+//			}
+//			else{
+//			}
+
+			segmentFill.SetupSegment(toDraw, segmentOutline, mParallel);
 		}
 
 		segmentFill.Draw();
@@ -96,7 +86,7 @@ public class DrawGrid2: MonoBehaviour
 			if(drawBreak){
 				drawBreak = false;
 				
-				wall[0] = wall[1] = PixelToReal(camera2d, current);
+				wall[0] = wall[1] = DrawHelper.PixelToReal(camera2d, current);
 				
 				walls.Clear();
 				
@@ -113,7 +103,7 @@ public class DrawGrid2: MonoBehaviour
 					wall[0] = wall[1];
 				}
 				else{
-					wall[1] = PixelToReal(camera2d, current);
+					wall[1] = DrawHelper.PixelToReal(camera2d, current);
 					Wall2D newWall = new Wall2D(wall[0], wall[1]);
 					if(walls.Count >= 1){
 						newWall.WallAtStart = walls[walls.Count-1];
@@ -156,7 +146,7 @@ public class DrawGrid2: MonoBehaviour
 		}
 		
 		if(!drawBreak){
-			wall[1] = PixelToReal(camera2d, current);
+			wall[1] = DrawHelper.PixelToReal(camera2d, current);
 		}
 		
 		if(!isContinue){
@@ -213,79 +203,6 @@ public class DrawGrid2: MonoBehaviour
 			//drawLine.SetWidths(widths);
 			drawLine.Draw3D();
 		}
-	}
-
-	void SetupOutLine(VectorLine outline, List<Vector3> list){
-		int startIndex = outline.points3.Count;
-		outline.Resize(startIndex + (list.Count-1)*2);
-		for(int i = 0, j=startIndex; i < list.Count-1; i++, j=j+2){
-			outline.points3[j] = list[i];
-			outline.points3[j+1] = list[i+1];
-		}
-	}
-	
-	void SetupSegment(WallFill wallFill, VectorLine outline, List<Wall2D> wallList){
-		bool isClose = false;
-		if(wallList[0].StartPos == wallList[wallList.Count-1].EndPos){
-			isClose = true;
-		}
-
-		Vector3[] room = DiscreteToContinue(wallList);
-
-		if(isClose){
-
-			List<Vector3> outter;
-			RoomQuad.GetPoint(room, isClose, true, out outter);
-			List<Vector3> inner;
-			RoomQuad.GetPoint(room, isClose, false, out inner);
-
-			wallFill.Add(outter, inner);
-
-			if(inner.Count > 0){
-				SetupOutLine(outline, inner);
-			}
-			
-			if(outter.Count > 0){
-				SetupOutLine(outline, outter);
-			}
-
-		}
-		else{
-			Parallel parallel = new Parallel();
-			List<Vector3> outter = parallel.Execute(room, false);
-			List<Vector3> inner = parallel.Execute(room, true);
-
-			wallFill.Add(outter, inner);
-
-			if(inner.Count > 0){
-				SetupOutLine(outline, inner);
-			}
-			
-			if(outter.Count > 0){
-				SetupOutLine(outline, outter);
-			}
-		}
-
-	}
-
-
-
-	Vector3[] DiscreteToContinue(List<Wall2D> wallList, int startIndex  = 0){
-		int length = wallList.Count;
-
-		Vector3[] room = null;
-		
-		if(length > 0){
-			room = new Vector3[length - startIndex + 1];
-			int i=0;
-			for(int j=startIndex; j < length; j++){
-				room[i++] = wallList[j].StartPos;
-			}
-
-			room[i] = wallList[length-1].EndPos;
-		}
-
-		return room;
 	}
 
 //	private abstract class ControllerState {
@@ -354,7 +271,7 @@ public class DrawGrid2: MonoBehaviour
 
 	private void OnDrag(Vector2 delta){
 		if(mState == State2D.Idle){
-			Vector2 realDelta = delta * scale;
+			Vector2 realDelta = delta * DrawHelper.Scale;
 			camera2d.transform.position = camera2d.transform.position + new Vector3(-realDelta.x, -realDelta.y, 0f);
 			MakeGrid2();
 		}
@@ -403,27 +320,85 @@ public class DrawGrid2: MonoBehaviour
 
 		EventTrigger trigger = background.AddComponent<EventTrigger>();
 
-		//OnDrag;
-		EventTrigger.Entry entry = new EventTrigger.Entry();
-		trigger.triggers.Add(entry);
-		entry.eventID = EventTriggerType.Drag;
-		UnityAction<BaseEventData> dragCallback = new UnityAction<BaseEventData>((eventData) => {
-			//Debug.Log("onDrag..");
-			PointerEventData data = eventData as PointerEventData;
-			OnDrag(data.delta);
-		});
-		entry.callback.AddListener(dragCallback);
-
 		//OnClick;
-		entry = new EventTrigger.Entry();
+		EventTrigger.Entry entry = new EventTrigger.Entry();
 		trigger.triggers.Add(entry);
 		entry.eventID = EventTriggerType.PointerClick;
 		entry.callback.AddListener((eventData) => {
+//			PointerEventData data = eventData as PointerEventData;
+//			if(mState == State2D.Idle){
+//				//Debug.Log("onClick..");
+//				Vector2 wordPos = DrawHelper.PixelToReal(camera2d, data.position);
+//				Wall2D wall;
+//				if(segmentFill.Select(wordPos, out wall)){
+//					wall.Color = Color.green;
+//				}
+//			}
+		});
+
+		Wall2D selected = null;
+
+		//OnPress Down;
+		entry = new EventTrigger.Entry();
+		trigger.triggers.Add(entry);
+		entry.eventID = EventTriggerType.PointerDown;
+		entry.callback.AddListener((eventData) => {
 			PointerEventData data = eventData as PointerEventData;
 			if(mState == State2D.Idle){
-
+				Vector2 wordPos = DrawHelper.PixelToReal(camera2d, data.position);
+				if(segmentFill.Select(wordPos, out selected)){
+					//Debug.Log(string.Format("change green..{0}, {1}", selected.StartPos, selected.EndPos ));
+					selected.Color = Color.green;
+				}
 			}
 		});
+
+		//OnPress Up;
+		entry = new EventTrigger.Entry();
+		trigger.triggers.Add(entry);
+		entry.eventID = EventTriggerType.PointerUp;
+		entry.callback.AddListener((eventData) => {
+			PointerEventData data = eventData as PointerEventData;
+			if(mState == State2D.Idle){
+				if(selected != null){
+					selected.Color = Color.red;
+					selected = null;
+				}
+			}
+		});
+
+		//OnDrag;
+		entry = new EventTrigger.Entry();
+		trigger.triggers.Add(entry);
+		entry.eventID = EventTriggerType.Drag;
+		entry.callback.AddListener((eventData) => {
+			//Debug.Log("onDrag..");
+			PointerEventData data = eventData as PointerEventData;
+			Vector2 realDelta = data.delta * DrawHelper.Scale;
+
+			if(mState == State2D.Idle){
+				if(selected == null){
+					camera2d.transform.position = camera2d.transform.position + new Vector3(-realDelta.x, -realDelta.y, 0f);
+					MakeGrid2();
+				}
+				else{
+					Wall2D wall = selected;
+					Vector2 startT = wall.StartPos + realDelta;
+					Vector2 endT = wall.EndPos + realDelta;
+
+					wall.StartPos = startT;
+					if(wall.WallAtStart != null){
+						wall.WallAtStart.EndPos = startT;
+					}
+
+					wall.EndPos = endT;
+					if(wall.WallAtEnd != null){
+						wall.WallAtEnd.StartPos = endT;
+					}
+				}
+			}
+		});
+
 	}
 
 	void DrawWall(Vector3[] room){
@@ -434,9 +409,9 @@ public class DrawGrid2: MonoBehaviour
 
 		if(isClose){
 			List<Vector3> outter;
-			RoomQuad.GetPoint(room, isClose, true, out outter);
+			RoomQuad.GetPoint(room, true, out outter);
 			List<Vector3> inner;
-			RoomQuad.GetPoint(room, isClose, false, out inner);
+			RoomQuad.GetPoint(room, false, out inner);
 
 			WallFill wallFill = new WallFill(VectorLine.canvas3D, "wallFill");
 			wallFill.Add(outter, inner);
@@ -553,14 +528,16 @@ public class DrawGrid2: MonoBehaviour
 		VectorLine.canvas3D.sortingLayerName = "World";
 
 		gridLine = new VectorLine ("Grid", new Vector2[0], null, 1.0f);
-		drawLine = new VectorLine("Draw", new Vector3[0], null, 1.0f, isContinue? LineType.Continuous : LineType.Discrete, isContinue ? Joins.None : Joins.None);
+		drawLine = new VectorLine("DrawLine", new Vector3[0], null, 1.0f, isContinue? LineType.Continuous : LineType.Discrete, isContinue ? Joins.None : Joins.None);
 		//drawLine.rectTransform.gameObject.AddComponent<Outline>();
 		rulerLine = new VectorLine("Ruler", new Vector3[0], null, 1.0f, LineType.Discrete);
 		segmentOutline = new VectorLine("SegmentOutline", new Vector3[0], null, 1.0f, LineType.Discrete);
 		segmentFill = new WallFill(VectorLine.canvas3D, "SegmentFill");
 
 		Vector3[] room = RoomQuad.GetVertex();
-		DrawWall(room);
+		//DrawWall(room);
+		List<Wall2D> roomWalls = DrawHelper.ContinueToDiscrete(room);
+		Home.Get().AddWallList(roomWalls);
 
 //		VectorLine testLine = new VectorLine("test", new Vector3[] { Vector3.zero, new Vector3(1.0f, 0f, 0f), Vector3.one }, null, 2.0f, LineType.Continuous);
 //		testLine.Draw3D();
@@ -576,8 +553,8 @@ public class DrawGrid2: MonoBehaviour
 	}
 
 	void SetScale(int unitPixels){
-		this.scale = 1f / unitPixels;
-		camera2d.orthographicSize = scale * camera2d.pixelHeight / 2;
+		DrawHelper.Scale = 1f / unitPixels;
+		camera2d.orthographicSize = DrawHelper.Scale * camera2d.pixelHeight / 2;
 		
 		MakeGrid2();
 	}
@@ -600,7 +577,7 @@ public class DrawGrid2: MonoBehaviour
 
 		List<Vector2> points2 = new List<Vector2>();
 		
-		Rect realRect = GetRealRect(camera2d);
+		Rect realRect = DrawHelper.GetRealRect(camera2d);
 		
 		float xMin = realRect.xMin;
 		float xMax = realRect.xMax;
@@ -610,7 +587,7 @@ public class DrawGrid2: MonoBehaviour
 		int startX = (int)xMin % gridUnit == 0? (int)xMin : ((int)xMin / gridUnit) * gridUnit;
 		for(float x = startX; x <= xMax; x = x+gridUnit){
 			
-			float pixelX = (x-xMin) / scale;
+			float pixelX = (x-xMin) / DrawHelper.Scale;
 			points2.Add(new Vector2(pixelX, 0));
 			points2.Add(new Vector2(pixelX, camera2d.pixelHeight - 1));
 			
@@ -627,7 +604,7 @@ public class DrawGrid2: MonoBehaviour
 		
 		int startY = (int)yMin % gridUnit == 0? (int)yMin : ((int)yMin / gridUnit) * gridUnit;
 		for(float y = startY; y <= yMax; y = y+gridUnit){
-			float pixelY = (y-yMin) / scale;
+			float pixelY = (y-yMin) / DrawHelper.Scale;
 			points2.Add(new Vector2(0, pixelY));
 			points2.Add(new Vector2(camera2d.pixelWidth - 1, pixelY));
 			

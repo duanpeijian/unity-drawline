@@ -8,6 +8,7 @@ public class Wall2D {
 	private float endY;
 	private Wall2D wallAtStart;
 	private Wall2D wallAtEnd;
+	private Color color = Color.red;
 
 	public Wall2D(Vector2 start, Vector2 end){
 		this.startX = start.x;
@@ -91,4 +92,14 @@ public class Wall2D {
 			value.wallAtStart = this;
 		}
 	}
+
+	public Color Color {
+		get {
+			return this.color;
+		}
+		set {
+			color = value;
+		}
+	}
+	
 }
