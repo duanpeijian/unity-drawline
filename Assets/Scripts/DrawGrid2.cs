@@ -29,7 +29,7 @@ public class DrawGrid2: MonoBehaviour
 	private VectorLine drawLine;
 	private List<float> widths = new List<float>();
 	private bool drawBreak = true;
-	private bool isContinue = false;
+	private bool isContinue = true;
 
 	private VectorLine rulerLine;
 	private Parallel mParallel = new Parallel();
@@ -37,6 +37,25 @@ public class DrawGrid2: MonoBehaviour
 	private List<Wall2D> found = new List<Wall2D>();
 	private VectorLine segmentOutline;
 	private WallFill segmentFill;
+
+	void AddWallsJoined(List<Wall2D> list, Wall2D origin, bool searchEnd = true){
+		Wall2D wall = origin;
+
+		if(searchEnd){
+			while(wall.WallAtEnd != null && wall.WallAtEnd != origin){
+				wall = wall.WallAtEnd;
+				list.Add(wall);
+			}
+		}
+		else{
+			while(wall.WallAtStart != null && wall.WallAtStart != origin){
+				wall = wall.WallAtStart;
+				list.Add(wall);
+			}
+		}
+	}
+
+	List<Wall2D> toDraw = new List<Wall2D>();
 
 	void Update(){
 		segmentFill.Clear();
@@ -50,14 +69,10 @@ public class DrawGrid2: MonoBehaviour
 				continue;
 			}
 			
-			List<Wall2D> toDraw = new List<Wall2D>();
-			Wall2D wall = start;
-			toDraw.Add(wall);
-			while(wall.WallAtEnd != null && wall.WallAtEnd != start){
-				wall = wall.WallAtEnd;
-				found.Add(wall);
-				toDraw.Add(wall);
-			}
+			toDraw.Clear();
+			toDraw.Add(start);
+			AddWallsJoined(toDraw, start);
+			found.AddRange(toDraw);
 
 //			if(wall.WallAtEnd != null && wall.WallAtEnd == start){
 //			}
@@ -91,14 +106,26 @@ public class DrawGrid2: MonoBehaviour
 				walls.Clear();
 				
 				drawStartIndex = walls.Count;
-				
-				if(walls.Count == 0){
-					//walls.Add(new Wall2D(wall[0], wall[1]));
-				}
 			}
 			else{
 				if(isContinue){
 					Wall2D newWall = new Wall2D(wall[0], wall[1]);
+					////////////////
+					if(walls.Count >= 1){
+						newWall.WallAtStart = walls[walls.Count-1];
+
+						Vector2 target = walls[0].StartPos;
+						Vector2 delta = SnapPoint(newWall.EndPos, target);
+						newWall.EndPos += delta;
+
+						if(delta != Vector2.zero){
+							newWall.WallAtEnd = walls[0];
+							drawBreak = true;
+						}
+					}
+					
+					Home.Get().AddWall(newWall);
+					///////////////
 					walls.Add(newWall);
 					wall[0] = wall[1];
 				}
@@ -170,14 +197,6 @@ public class DrawGrid2: MonoBehaviour
 			//drawLine.SetWidths(widths);
 			drawLine.color = Color.black;
 			drawLine.Draw3D();
-			
-			//draw ruler;
-			List<Vector3> ruler = mParallel.GetRuler(wall, 0.1f, false);
-			rulerLine.Resize(2);
-			rulerLine.points3[0] = ruler[0];
-			rulerLine.points3[1] = ruler[1];
-			rulerLine.SetColor(Color.blue);
-			rulerLine.Draw3D();
 		}
 		else{
 			drawLine.Resize(walls.Count + 2);
@@ -198,11 +217,19 @@ public class DrawGrid2: MonoBehaviour
 			}
 			
 			drawLine.points3[i+1] = wall[1];
-			
-			drawLine.color = Color.black;
+
 			//drawLine.SetWidths(widths);
+			drawLine.color = Color.black;
 			drawLine.Draw3D();
 		}
+
+		//draw ruler;
+		List<Vector3> ruler = mParallel.GetRuler(wall, 0.1f, false);
+		rulerLine.Resize(2);
+		rulerLine.points3[0] = ruler[0];
+		rulerLine.points3[1] = ruler[1];
+		rulerLine.SetColor(Color.blue);
+		rulerLine.Draw3D();
 	}
 
 //	private abstract class ControllerState {
@@ -349,6 +376,9 @@ public class DrawGrid2: MonoBehaviour
 				if(segmentFill.Select(wordPos, out selected)){
 					//Debug.Log(string.Format("change green..{0}, {1}", selected.StartPos, selected.EndPos ));
 					selected.Color = Color.green;
+
+					Wall2D wall = selected;
+
 				}
 			}
 		});
@@ -386,19 +416,88 @@ public class DrawGrid2: MonoBehaviour
 					Vector2 startT = wall.StartPos + realDelta;
 					Vector2 endT = wall.EndPos + realDelta;
 
+					List<Wall2D> joined = new List<Wall2D>();
+
+					if(wall.WallAtStart == null){
+						joined.Clear();
+						AddWallsJoined(joined, wall, true);
+						if(joined.Count > 0){
+							Vector3 target = joined[joined.Count-1].EndPos;
+							Vector2 delta = SnapPoint(startT, target);
+							startT = startT + delta;
+							endT = endT + delta;
+						}
+					}
+					
+					if(wall.WallAtEnd == null){
+						joined.Clear();
+						AddWallsJoined(joined, wall, false);
+						if(joined.Count > 0){
+							Vector3 target = joined[joined.Count-1].StartPos;
+							//Debug.Log(string.Format("endT: ({0}, {1}), target: ({2}, {3})", endT.x, endT.y, target.x - endT.x, target.y - endT.y));
+							Vector2 delta = SnapPoint(endT, target);
+							startT = startT + delta;
+							endT = endT + delta;
+						}
+					}
+
+					if(wall.WallAtStart != null && wall.WallAtEnd != null){
+
+						Parallel.Line line = mParallel.GetOffsetLine(wall, realDelta);
+						Parallel.Line line1 = mParallel.GetLine(wall.WallAtStart.StartPos, wall.WallAtStart.EndPos);
+						Parallel.Line line2 = mParallel.GetLine(wall.WallAtEnd.StartPos, wall.WallAtEnd.EndPos);
+
+						Vector2 p = Vector2.zero;
+						if(mParallel.GetCrossPoint(line, line1, out p)){
+							if(wall.WallAtStart.StartPos != p){
+								wall.StartPos = p;
+								wall.WallAtStart.EndPos = p;
+							}
+							else{
+								Debug.Log("wallAtStart duplicate..");
+							}
+						}
+
+						if(mParallel.GetCrossPoint(line, line2, out p)){
+							if(wall.WallAtEnd.EndPos != p){
+								wall.EndPos = p;
+								wall.WallAtEnd.StartPos = p;
+							}
+							else{
+								Debug.Log("wallAtEnd duplicate..");
+							}
+						}
+
+						return;
+					}
+
 					wall.StartPos = startT;
 					if(wall.WallAtStart != null){
+//						wall.WallAtStart.WallAtEnd = null;
+//						wall.WallAtStart = null;
+
 						wall.WallAtStart.EndPos = startT;
 					}
 
 					wall.EndPos = endT;
 					if(wall.WallAtEnd != null){
+//						wall.WallAtEnd.WallAtStart = null;
+//						wall.WallAtEnd = null;
+
 						wall.WallAtEnd.StartPos = endT;
 					}
 				}
 			}
 		});
 
+	}
+
+	Vector2 SnapPoint(Vector2 p, Vector2 target){
+		if(Mathf.Abs(p.x - target.x) < 0.02f && Mathf.Abs(p.y - target.y) < 0.02f){
+			return target - p;
+		}
+
+		return Vector2.zero;
 	}
 
 	void DrawWall(Vector3[] room){

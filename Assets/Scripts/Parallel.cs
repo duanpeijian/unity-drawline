@@ -12,6 +12,14 @@ public class Parallel {
 
 	}
 
+	public Line GetOffsetLine(Wall2D wall, Vector2 realDelta){
+		Vector2 rightVector = GetOffset(wall.StartPos, wall.EndPos, true, 1.0f);
+		float dist = Vector2.Dot(realDelta, rightVector);
+		Vector2 offset = rightVector * dist;
+
+		return GetParallelLine(wall.StartPos, wall.EndPos, offset);
+	}
+
 	//room is one draw line(continue line);
 	public List<Vector3> GetRuler(Vector2[] room, float dist, bool right = true){
 		if(room.Length < 2){
@@ -38,6 +46,23 @@ public class Parallel {
 		rightVector = right? rightVector : -rightVector;
 		Vector2 offset = new Vector2(rightVector.x, rightVector.y) * dist;
 		return offset;
+	}
+
+	Line GetParallelLine(Vector2 p0, Vector2 p1, Vector2 offset){
+		Vector2 middle = (p0 + p1)/2;
+		middle = middle + offset;
+		
+		//result.Add(middle);
+		
+		Line line = GetLine(p0, p1);
+		if(line.isVetical){
+			line.b = middle.x;
+		}
+		else{
+			line.b = middle.y - line.k * middle.x;
+		}
+
+		return line;
 	}
 
 	public List<Vector3> Execute(Vector3[] room, bool right = true, bool isClose = false){
@@ -67,18 +92,7 @@ public class Parallel {
 				}
 			}
 
-			Vector2 middle = (room[i] + room[i+1])/2;
-			middle = middle + offset;
-
-			//result.Add(middle);
-
-			Line line = GetLine(room[i], room[i+1]);
-			if(line.isVetical){
-				line.b = middle.x;
-			}
-			else{
-				line.b = middle.y - line.k * middle.x;
-			}
+			Line line = GetParallelLine(room[i], room[i+1], offset);
 
 			//Debug.Log(string.Format("line: {0}({1}, {2})", line.isVetical, line.k, line.b));
 			lines.Add(line);

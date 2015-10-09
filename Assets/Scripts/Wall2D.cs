@@ -79,7 +79,9 @@ public class Wall2D {
 		}
 		set {
 			this.wallAtStart = value;
-			value.wallAtEnd = this;
+			if(value != null){
+				value.wallAtEnd = this;
+			}
 		}
 	}
 
@@ -89,7 +91,9 @@ public class Wall2D {
 		}
 		set {
 			this.wallAtEnd = value;
-			value.wallAtStart = this;
+			if(value != null){
+				value.wallAtStart = this;
+			}
 		}
 	}
 
