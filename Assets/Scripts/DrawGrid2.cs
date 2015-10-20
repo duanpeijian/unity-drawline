@@ -13,7 +13,7 @@ public enum State2D {
 
 public class DrawGrid2: MonoBehaviour
 {
-	private int unitPixels = 100;
+	//private int unitPixels = 100;
 
 	private VectorLine gridLine;
 	private Camera camera2d;
@@ -79,7 +79,7 @@ public class DrawGrid2: MonoBehaviour
 //			else{
 //			}
 
-			segmentFill.SetupSegment(toDraw, segmentOutline, mParallel);
+			segmentFill.SetupSegment(toDraw, wallThick, segmentOutline, mParallel);
 		}
 
 		segmentFill.Draw();
@@ -184,15 +184,15 @@ public class DrawGrid2: MonoBehaviour
 			int i = 0;
 			for(; i < wallSaved.Count; i++){
 				Wall2D line = wallSaved[i];
-				drawLine.points3[i*2] = line.StartPos;
-				drawLine.points3[i*2+1] = line.EndPos;
+				drawLine.points3[i*2] = DrawHelper.Vector2To3(line.StartPos);
+				drawLine.points3[i*2+1] = DrawHelper.Vector2To3(line.EndPos);
 				
-				widths.Add(wallThick * unitPixels);
+				widths.Add(wallThick * DrawHelper.unitPixels);
 			}
 			
 			//walls[walls.Count-1][1] = wall[1];
-			drawLine.points3[i*2] = wall[0];
-			drawLine.points3[i*2+1] = wall[1];
+			drawLine.points3[i*2] = DrawHelper.Vector2To3(wall[0]);
+			drawLine.points3[i*2+1] = DrawHelper.Vector2To3(wall[1]);
 			
 			//drawLine.SetWidths(widths);
 			drawLine.color = Color.black;
@@ -205,18 +205,18 @@ public class DrawGrid2: MonoBehaviour
 			int i = 0;
 			for(; i < walls.Count; i++){
 				Wall2D line = walls[i];
-				drawLine.points3[i] = line.StartPos;
-				widths.Add(wallThick * unitPixels);
+				drawLine.points3[i] = DrawHelper.Vector2To3(line.StartPos);
+				widths.Add(wallThick * DrawHelper.unitPixels);
 			}
 			
 			if(i == 0){
-				drawLine.points3[i] = wall[0];
+				drawLine.points3[i] = DrawHelper.Vector2To3(wall[0]);
 			}
 			else{
-				drawLine.points3[i] = walls[i-1].EndPos;
+				drawLine.points3[i] = DrawHelper.Vector2To3(walls[i-1].EndPos);
 			}
 			
-			drawLine.points3[i+1] = wall[1];
+			drawLine.points3[i+1] = DrawHelper.Vector2To3(wall[1]);
 
 			//drawLine.SetWidths(widths);
 			drawLine.color = Color.black;
@@ -224,10 +224,10 @@ public class DrawGrid2: MonoBehaviour
 		}
 
 		//draw ruler;
-		List<Vector3> ruler = mParallel.GetRuler(wall, 0.1f, false);
+		List<Vector2> ruler = mParallel.GetRuler(wall, 0.1f, false);
 		rulerLine.Resize(2);
-		rulerLine.points3[0] = ruler[0];
-		rulerLine.points3[1] = ruler[1];
+		rulerLine.points3[0] = DrawHelper.Vector2To3(ruler[0]);
+		rulerLine.points3[1] = DrawHelper.Vector2To3(ruler[1]);
 		rulerLine.SetColor(Color.blue);
 		rulerLine.Draw3D();
 	}
@@ -408,7 +408,8 @@ public class DrawGrid2: MonoBehaviour
 
 			if(mState == State2D.Idle){
 				if(selected == null){
-					camera2d.transform.position = camera2d.transform.position + new Vector3(-realDelta.x, -realDelta.y, 0f);
+					//camera2d.transform.position = camera2d.transform.position + new Vector3(-realDelta.x, -realDelta.y, 0f);
+					DrawHelper.MoveRealRect(camera2d, realDelta);
 					MakeGrid2();
 				}
 				else{
@@ -500,16 +501,16 @@ public class DrawGrid2: MonoBehaviour
 		return Vector2.zero;
 	}
 
-	void DrawWall(Vector3[] room){
+	void DrawWall(Vector2[] room){
 		bool isClose = false;
 		if(room[0] == room[room.Length-1]){
 			isClose = true;
 		}
 
 		if(isClose){
-			List<Vector3> outter;
+			List<Vector2> outter;
 			RoomQuad.GetPoint(room, true, out outter);
-			List<Vector3> inner;
+			List<Vector2> inner;
 			RoomQuad.GetPoint(room, false, out inner);
 
 			WallFill wallFill = new WallFill(VectorLine.canvas3D, "wallFill");
@@ -531,8 +532,8 @@ public class DrawGrid2: MonoBehaviour
 		else {
 
 			Parallel parallel = new Parallel();
-			List<Vector3> outter = parallel.Execute(room, false);
-			List<Vector3> inner = parallel.Execute(room, true);
+			List<Vector2> outter = parallel.Execute(room, wallThick, false);
+			List<Vector2> inner = parallel.Execute(room, wallThick, true);
 
 			WallFill wallFill = new WallFill(VectorLine.canvas3D, "wallFill");
 			wallFill.Add(outter, inner);
@@ -633,7 +634,7 @@ public class DrawGrid2: MonoBehaviour
 		segmentOutline = new VectorLine("SegmentOutline", new Vector3[0], null, 1.0f, LineType.Discrete);
 		segmentFill = new WallFill(VectorLine.canvas3D, "SegmentFill");
 
-		Vector3[] room = RoomQuad.GetVertex();
+		Vector2[] room = RoomQuad.GetVertex();
 		//DrawWall(room);
 		List<Wall2D> roomWalls = DrawHelper.ContinueToDiscrete(room);
 		Home.Get().AddWallList(roomWalls);
@@ -646,27 +647,30 @@ public class DrawGrid2: MonoBehaviour
 		gridLine.rectTransform.anchoredPosition = new Vector2(0f, 0f);
 		//MakeGrid ();
 		
-		SetScale(unitPixels);
+		//SetScale(DrawHelper.unitPixels);
+		DrawHelper.OnScaleChanged = MakeGrid2;
+		DrawHelper.SetScale(camera2d, DrawHelper.unitPixels);
 		
 		mState = State2D.Idle;
 	}
 
-	void SetScale(int unitPixels){
-		DrawHelper.Scale = 1f / unitPixels;
-		camera2d.orthographicSize = DrawHelper.Scale * camera2d.pixelHeight / 2;
-		
-		MakeGrid2();
-	}
+//	void SetScale(int unitPixels){
+//		DrawHelper.Scale = 1f / unitPixels;
+//		camera2d.orthographicSize = DrawHelper.Scale * camera2d.pixelHeight / 2;
+//		
+//		MakeGrid2();
+//	}
 
 	void OnGUI ()
 	{
-		GUI.Label (new Rect (10, 10, 30, 20), unitPixels.ToString ());
-		unitPixels = (int)GUI.HorizontalSlider (new Rect (40f, 15f, 590f, 20f), (float)unitPixels, 50f, 200f);
+		GUI.Label (new Rect (10, 10, 30, 20), DrawHelper.unitPixels.ToString ());
+		int unitPixels = (int)GUI.HorizontalSlider (new Rect (40f, 15f, 590f, 20f), (float)DrawHelper.unitPixels, 50f, 200f);
 		if (GUI.changed) {
 			//camera2d.orthographicSize = gridPixels;
 			//MakeGrid ();
-			
-			SetScale(unitPixels);
+
+			//SetScale(DrawHelper.unitPixels);
+			DrawHelper.SetScale(camera2d, unitPixels);
 		}
 	}
 
@@ -741,15 +745,15 @@ public class DrawGrid2: MonoBehaviour
 
 	void MakeGrid ()
 	{
-		var numberOfGridPoints = ((Screen.width / unitPixels + 1) + (Screen.height / unitPixels + 1)) * 2;
+		var numberOfGridPoints = ((Screen.width / DrawHelper.unitPixels + 1) + (Screen.height / DrawHelper.unitPixels + 1)) * 2;
 		gridLine.Resize ((int)numberOfGridPoints);
 	
 		var index = 0;
-		for (var x = 0; x < Screen.width; x += unitPixels) {
+		for (var x = 0; x < Screen.width; x += DrawHelper.unitPixels) {
 			gridLine.points2 [index++] = new Vector2 (x, 0);
 			gridLine.points2 [index++] = new Vector2 (x, Screen.height - 1);
 		}
-		for (var y = 0; y < Screen.height; y += unitPixels) {
+		for (var y = 0; y < Screen.height; y += DrawHelper.unitPixels) {
 
 			gridLine.points2 [index++] = new Vector2 (0, y);
 			gridLine.points2 [index++] = new Vector2 (Screen.width - 1, y);

@@ -35,7 +35,7 @@ public class WallFill {
 		Resize(0);
 	}
 
-	public void Add(IList<Vector3> outter, IList<Vector3> inner, IList<Color> colors = null){
+	public void Add(IList<Vector2> outter, IList<Vector2> inner, IList<Color> colors = null){
 		if(outter.Count != inner.Count){
 			Debug.Log("Outter's count not equal Inner");
 			return;
@@ -57,13 +57,13 @@ public class WallFill {
 		for(int i=0; i < outter.Count-1; i++){
 			Color color = colors != null ? colors[i] : Color.white;
 
-			rect[0].position = outter[i];
+			rect[0].position = DrawHelper.Vector2To3(outter[i]);
 			rect[0].color = color;
-			rect[1].position = outter[i+1];
+			rect[1].position = DrawHelper.Vector2To3(outter[i+1]);
 			rect[1].color = color;
-			rect[2].position = inner[i+1];
+			rect[2].position = DrawHelper.Vector2To3(inner[i+1]);
 			rect[2].color = color;
-			rect[3].position = inner[i];
+			rect[3].position = DrawHelper.Vector2To3(inner[i]);
 			rect[3].color = color;
 
 			for(int j=0; j < 4; j++){
@@ -74,16 +74,16 @@ public class WallFill {
 		}
 	}
 
-	void SetupOutLine(VectorLine outline, List<Vector3> list){
+	void SetupOutLine(VectorLine outline, List<Vector2> list){
 		int startIndex = outline.points3.Count;
 		outline.Resize(startIndex + (list.Count-1)*2);
 		for(int i = 0, j=startIndex; i < list.Count-1; i++, j=j+2){
-			outline.points3[j] = list[i];
-			outline.points3[j+1] = list[i+1];
+			outline.points3[j] = DrawHelper.Vector2To3(list[i]);
+			outline.points3[j+1] = DrawHelper.Vector2To3(list[i+1]);
 		}
 	}
 	
-	public void SetupSegment(List<Wall2D> wallList, VectorLine outline, Parallel parallel){
+	public void SetupSegment(List<Wall2D> wallList, float wallThick, VectorLine outline, Parallel parallel){
 
 		//this.walls.AddRange(wallList);
 
@@ -93,7 +93,7 @@ public class WallFill {
 			colors.Add(wall.Color);
 		}
 
-		Vector3[] room = DrawHelper.DiscreteToContinue(wallList);
+		Vector2[] room = DrawHelper.DiscreteToContinue(wallList);
 		
 		//		bool isClose = false;
 		//		if(wallList[0].StartPos == wallList[wallList.Count-1].EndPos){
@@ -112,23 +112,22 @@ public class WallFill {
 //			List<Vector3> inner;
 //			RoomQuad.GetPoint(room, false, out inner);
 
-			List<Vector3> outter = parallel.Execute(room, false, true);
-			List<Vector3> inner = parallel.Execute(room, true, true);
+			List<Vector2> outter = parallel.Execute(room, wallThick, false, true);
+			List<Vector2> inner = parallel.Execute(room, wallThick, true, true);
 			
 			Add(outter, inner, colors);
 			
-			//			if(inner.Count > 0){
-			//				SetupOutLine(outline, inner);
-			//			}
-			//			
-			//			if(outter.Count > 0){
-			//				SetupOutLine(outline, outter);
-			//			}
+			if(inner.Count > 0){
+				SetupOutLine(outline, inner);
+			}
 			
+			if(outter.Count > 0){
+				SetupOutLine(outline, outter);
+			}
 		}
 		else{
-			List<Vector3> outter = parallel.Execute(room, false);
-			List<Vector3> inner = parallel.Execute(room, true);
+			List<Vector2> outter = parallel.Execute(room, wallThick, false);
+			List<Vector2> inner = parallel.Execute(room, wallThick, true);
 			
 			Add(outter, inner, colors);
 			
@@ -161,7 +160,10 @@ public class WallFill {
 
 			for(int j=0; j < 4; j++){
 				UIVertex p = vertlist[i*4 + j];
-				IntPoint ip = new IntPoint(p.position.x * DrawHelper.ClipScalling, p.position.y * DrawHelper.ClipScalling);
+				//IntPoint ip = new IntPoint(p.position.x * DrawHelper.ClipScalling, p.position.y * DrawHelper.ClipScalling);
+				Vector2 pos = DrawHelper.Vector3To2(p.position);
+				IntPoint ip = new IntPoint(pos.x * DrawHelper.ClipScalling, pos.y * DrawHelper.ClipScalling);
+
 				path.Add(ip);
 			}
 

@@ -8,13 +8,13 @@ namespace Construction {
 
 	public class RoomQuad {
 
-		public static Vector3[] GetVertex(){
-			Vector3[] quad = new Vector3[] {
-				new Vector3(0.5f, 0.5f, 0f),
-				new Vector3(-0.5f, 0.5f, 0f),
-				new Vector3(-0.5f, -0.5f, 0f),
-				new Vector3(0.5f, -0.5f, 0f),
-				new Vector3(0.5f, 0.5f, 0f)
+		public static Vector2[] GetVertex(){
+			Vector2[] quad = new Vector2[] {
+				new Vector3(0.5f, 0.5f),
+				new Vector3(-0.5f, 0.5f),
+				new Vector3(-0.5f, -0.5f),
+				new Vector3(0.5f, -0.5f),
+				new Vector3(0.5f, 0.5f)
 			};
 
 			for(int i=0; i < quad.Length; i++){
@@ -27,7 +27,7 @@ namespace Construction {
 			return quad;
 		}
 		
-		public static bool GetPoint(Vector3[] quad, bool outter, out List<Vector3> list, bool isClose=true){
+		public static bool GetPoint(Vector2[] quad, bool outter, out List<Vector2> list, bool isClose=true){
 			List<IntPoint> quadLines = new List<IntPoint>();
 			for(int i=0; i < quad.Length; i++){
 				Vector3 from = quad[i];
@@ -57,7 +57,7 @@ namespace Construction {
 			co.MiterLimit = 8;
 			co.Execute(ref solution, delta);
 
-			list = new List<Vector3>();
+			list = new List<Vector2>();
 
 			if(solution.Count > 0){
 				foreach(IntPoint p in solution[0]){

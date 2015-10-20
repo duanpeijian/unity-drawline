@@ -1,7 +1,16 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 public class DrawHelper {
+
+	private static int mUnitPixels = 80;
+
+	public static int unitPixels {
+		get {
+			return mUnitPixels;
+		}
+	}
 
 	private static double mWallThick = 0.1f;
 	
@@ -34,13 +43,40 @@ public class DrawHelper {
 		}
 	}
 
+	public static Action OnScaleChanged = null;
+
+	public static void SetScale(Camera camera2d, int unitPixels){
+		mUnitPixels = unitPixels;
+
+		scale = 1f / unitPixels;
+		camera2d.orthographicSize = scale * camera2d.pixelHeight / 2;
+
+		if(OnScaleChanged != null){
+			OnScaleChanged();
+		}
+	}
+
+	public static Vector2 Vector3To2(Vector3 pos){
+		return new Vector2(pos.x, pos.z);
+	}
+	
+	public static Vector3 Vector2To3(Vector2 pos){
+		return new Vector3(pos.x, 0f, pos.y);
+	}
+
 	public static Rect GetRealRect(Camera camera2d){
 		Vector2 size = new Vector2(scale*camera2d.pixelWidth, 2*camera2d.orthographicSize);
-		Vector2 offset = new Vector2(camera2d.transform.position.x, camera2d.transform.position.y);
+		Transform trans = camera2d.transform;
+		Vector2 offset = Vector3To2(trans.position);
 		Rect realRect = new Rect(new Vector2(-size.x/2 + offset.x, -size.y/2 + offset.y), size);
 		return realRect;
 	}
-	
+
+	public static void MoveRealRect(Camera camera2d, Vector2 realDelta){
+		Vector3 delta = Vector2To3(realDelta);
+		camera2d.transform.position = camera2d.transform.position + delta * -1f;
+	}
+
 	public static Vector2 PixelToReal(Camera camera2d, Vector2 mousePos){
 		Rect rect = camera2d.pixelRect;
 		Rect realRect = GetRealRect(camera2d);
@@ -49,7 +85,7 @@ public class DrawHelper {
 		return new Vector2(x, y);
 	}
 
-	public static List<Wall2D> ContinueToDiscrete(Vector3[] points){
+	public static List<Wall2D> ContinueToDiscrete(Vector2[] points){
 		bool isClose = false;
 		if(points[0] == points[points.Length-1]){
 			isClose = true;
@@ -75,13 +111,13 @@ public class DrawHelper {
 		return list;
 	}
 	
-	public static Vector3[] DiscreteToContinue(List<Wall2D> wallList, int startIndex  = 0){
+	public static Vector2[] DiscreteToContinue(List<Wall2D> wallList, int startIndex  = 0){
 		int length = wallList.Count;
 		
-		Vector3[] room = null;
+		Vector2[] room = null;
 		
 		if(length > 0){
-			room = new Vector3[length - startIndex + 1];
+			room = new Vector2[length - startIndex + 1];
 			int i=0;
 			for(int j=startIndex; j < length; j++){
 				room[i++] = wallList[j].StartPos;

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public class Parallel {
 
-	private float dist = 0.05f;
+	//private float dist = 0.1f;
 
 	public struct Line {
 		public bool isVetical;
@@ -21,13 +21,13 @@ public class Parallel {
 	}
 
 	//room is one draw line(continue line);
-	public List<Vector3> GetRuler(Vector2[] room, float dist, bool right = true){
+	public List<Vector2> GetRuler(Vector2[] room, float dist, bool right = true){
 		if(room.Length < 2){
 			Debug.LogError("vertex count less than 2");
 			return null;
 		}
 
-		List<Vector3> result = new List<Vector3>();
+		List<Vector2> result = new List<Vector2>();
 
 		for(int i=0; i < room.Length-1; i++){
 			Vector2 offset = GetOffset(room[i], room[i+1], right, dist);
@@ -40,7 +40,7 @@ public class Parallel {
 		return result;
 	}
 
-	private Vector2 GetOffset(Vector3 p0, Vector3 p1, bool right, float dist){
+	public Vector2 GetOffset(Vector3 p0, Vector3 p1, bool right, float dist){
 		Vector2 lineVector = p1 - p0;
 		Vector3 rightVector = Vector3.Cross(lineVector, Vector3.forward).normalized;
 		rightVector = right? rightVector : -rightVector;
@@ -65,7 +65,7 @@ public class Parallel {
 		return line;
 	}
 
-	public List<Vector3> Execute(Vector3[] room, bool right = true, bool isClose = false){
+	public List<Vector2> Execute(Vector2[] room, float wallThick = 0.1f, bool right = true, bool isClose = false){
 		if(room.Length < 2){
 			Debug.LogError("vertex count less than 2");
 			return null;
@@ -77,10 +77,10 @@ public class Parallel {
 		Vector2 first = Vector2.zero;
 		Vector2 last = Vector2.zero;
 
-		List<Vector3> result = new List<Vector3>();
+		List<Vector2> result = new List<Vector2>();
 
 		for(int i=0; i < room.Length-1; i++){
-			Vector2 offset = GetOffset(room[i], room[i+1], right, dist);
+			Vector2 offset = GetOffset(room[i], room[i+1], right, wallThick/2);
 
 			if(!isClose){
 				if(i == 0){
