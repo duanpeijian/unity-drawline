@@ -58,34 +58,8 @@ public class DrawGrid2: MonoBehaviour
 	List<Wall2D> toDraw = new List<Wall2D>();
 
 	void Update(){
-		segmentFill.Clear();
-		segmentOutline.Resize(0);
-		var savedWall = Home.Get().Walls;
-		found.Clear();
-		for(int i=0; i < savedWall.Count; i++){
-			Wall2D start = savedWall[i];
-			
-			if(found.Contains(start)){
-				continue;
-			}
-			
-			toDraw.Clear();
-			toDraw.Add(start);
-			AddWallsJoined(toDraw, start);
-			found.AddRange(toDraw);
-
-//			if(wall.WallAtEnd != null && wall.WallAtEnd == start){
-//			}
-//			else{
-//			}
-
-			segmentFill.SetupSegment(toDraw, wallThick, segmentOutline, mParallel);
-		}
-
-		segmentFill.Draw();
-
-		segmentOutline.SetColor(Color.black);
-		segmentOutline.Draw3D();
+		
+		ShowWallFill();
 
 		if(mState != State2D.Draw){
 			return;
@@ -199,6 +173,10 @@ public class DrawGrid2: MonoBehaviour
 			drawLine.Draw3D();
 		}
 		else{
+			if(Input.GetMouseButtonUp(0)){
+				//Debug.Log("pause here!");
+			}
+
 			drawLine.Resize(walls.Count + 2);
 			
 			widths.Clear();
@@ -230,6 +208,40 @@ public class DrawGrid2: MonoBehaviour
 		rulerLine.points3[1] = DrawHelper.Vector2To3(ruler[1]);
 		rulerLine.SetColor(Color.blue);
 		rulerLine.Draw3D();
+	}
+
+	void ShowWallFill(){
+		
+		//Debug.Log("Generate Fill..");
+		
+		segmentFill.Clear();
+		segmentOutline.Resize(0);
+		var savedWall = Home.Get().Walls;
+		found.Clear();
+		for(int i=0; i < savedWall.Count; i++){
+			Wall2D start = savedWall[i];
+			
+			if(found.Contains(start)){
+				continue;
+			}
+			
+			toDraw.Clear();
+			toDraw.Add(start);
+			AddWallsJoined(toDraw, start);
+			found.AddRange(toDraw);
+			
+			//			if(wall.WallAtEnd != null && wall.WallAtEnd == start){
+			//			}
+			//			else{
+			//			}
+			
+			segmentFill.SetupSegment(toDraw, wallThick, segmentOutline, mParallel);
+		}
+		
+		segmentFill.Draw();
+		
+		segmentOutline.SetColor(Color.black);
+		segmentOutline.Draw3D();
 	}
 
 //	private abstract class ControllerState {
@@ -381,6 +393,10 @@ public class DrawGrid2: MonoBehaviour
 
 				}
 			}
+
+			if(mState == State2D.Draw){
+
+			}
 		});
 
 		//OnPress Up;
@@ -395,6 +411,10 @@ public class DrawGrid2: MonoBehaviour
 					selected = null;
 				}
 			}
+
+//			if(mState == State2D.Draw){
+//				ShowWallFill();
+//			}
 		});
 
 		//OnDrag;
@@ -640,6 +660,7 @@ public class DrawGrid2: MonoBehaviour
 		Home.Get().AddWallList(roomWalls);
 
 //		VectorLine testLine = new VectorLine("test", new Vector3[] { Vector3.zero, new Vector3(1.0f, 0f, 0f), Vector3.one }, null, 2.0f, LineType.Continuous);
+//		testLine.color = Color.red;
 //		testLine.Draw3D();
 
 		// Align 1-pixel lines on the pixel grid, so they don't potentially get messed up by anti-aliasing

@@ -146,8 +146,49 @@ public class WallFill {
 		canvasRender.Clear();
 		canvasRender.SetMaterial(wallMaterial, null);
 		canvasRender.GetMaterial().color = Color.white;
-		canvasRender.SetVertices(vertlist);
 		//Debug.Log("cout: " +  list.Count);
+		//canvasRender.SetVertices(vertlist);
+		SetVertices(vertlist.ToArray(), vertlist.Count);
+	}
+
+	private Mesh mesh = new Mesh();
+
+	private void SetVertices (UIVertex[] vertices, int size)
+	{
+		List<Vector3> list = new List<Vector3> ();
+		List<Color32> list2 = new List<Color32> ();
+		List<Vector2> list3 = new List<Vector2> ();
+		List<Vector2> list4 = new List<Vector2> ();
+		List<Vector3> list5 = new List<Vector3> ();
+		List<Vector4> list6 = new List<Vector4> ();
+		List<int> list7 = new List<int> ();
+		for (int i = 0; i < size; i += 4)
+		{
+			for (int j = 0; j < 4; j++)
+			{
+				list.Add (vertices [i + j].position);
+				list2.Add (vertices [i + j].color);
+				list3.Add (vertices [i + j].uv0);
+				list4.Add (vertices [i + j].uv1);
+				list5.Add (vertices [i + j].normal);
+				list6.Add (vertices [i + j].tangent);
+			}
+			list7.Add (i);
+			list7.Add (i + 1);
+			list7.Add (i + 2);
+			list7.Add (i + 2);
+			list7.Add (i + 3);
+			list7.Add (i);
+		}
+
+		mesh.SetVertices (list);
+		mesh.SetColors (list2);
+		mesh.SetNormals (list5);
+		mesh.SetTangents (list6);
+		mesh.SetUVs (0, list3);
+		mesh.SetUVs (1, list4);
+		mesh.SetIndices (list7.ToArray (), MeshTopology.Triangles, 0);
+		canvasRender.SetMesh (mesh);
 	}
 
 	public bool Select(Vector2 wordPos, out Wall2D wall){

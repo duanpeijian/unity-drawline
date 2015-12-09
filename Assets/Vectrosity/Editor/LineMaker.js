@@ -79,10 +79,10 @@ class LineMaker extends ScriptableWizard {
 		System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-US");
 		var object : GameObject = (Selection.activeObject as GameObject);
 		objectMesh = (object.GetComponentInChildren(MeshFilter) as MeshFilter).sharedMesh;	
-		originalMaterial = object.GetComponentInChildren(Renderer).sharedMaterial;
+		originalMaterial = (object.GetComponentInChildren(Renderer) as Renderer).sharedMaterial;
 		objectMaterial = new Material(Shader.Find("Transparent/Diffuse"));
 		objectMaterial.color.a = .8;
-		object.GetComponentInChildren(Renderer).material = objectMaterial;
+		(object.GetComponentInChildren(Renderer) as Renderer).material = objectMaterial;
 		pointMaterial = new Material(Shader.Find("VertexLit"));
 		pointMaterial.color = Color.blue;
 		pointMaterial.SetColor("_Emission", Color.blue);
